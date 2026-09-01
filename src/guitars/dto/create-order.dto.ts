@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
   IsInt,
   IsNumber,
@@ -14,7 +15,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-export class CartItemDto {
+export class OrderItemDto {
   @IsString()
   @MinLength(1)
   @MaxLength(60)
@@ -41,12 +42,13 @@ export class CartItemDto {
   image?: string;
 }
 
-export class UpsertCartDto {
+export class CreateOrderDto {
   @IsArray()
-  // Tope defensivo: un carrito real nunca va a tener más items que el
+  @ArrayMinSize(1)
+  // Tope defensivo: un pedido real nunca va a tener más items que el
   // catálogo completo, esto solo evita payloads absurdos.
   @ArrayMaxSize(50)
   @ValidateNested({ each: true })
-  @Type(() => CartItemDto)
-  items!: CartItemDto[];
+  @Type(() => OrderItemDto)
+  items!: OrderItemDto[];
 }
