@@ -9,6 +9,12 @@ interface ContactEmailData {
   message: string;
 }
 
+interface RecommendationEmailData {
+  name: string;
+  email: string;
+  message: string;
+}
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
@@ -16,10 +22,16 @@ export class EmailService {
   private readonly fromAddress: string;
   private readonly receiverEmail: string;
 
+  private readonly airbnbReceiverEmail: string;
+
   constructor(private readonly config: ConfigService) {
     const apiKey = this.config.get<string>('RESEND_API_KEY');
     this.fromAddress = this.config.get<string>('CONTACT_FROM_EMAIL') ?? 'onboarding@resend.dev';
     this.receiverEmail = this.config.get<string>('CONTACT_RECEIVER_EMAIL') ?? '';
+    // Permite notificar las recomendaciones de Airbnb a una casilla distinta;
+    // si no se define, cae en la misma que las notificaciones del portfolio.
+    this.airbnbReceiverEmail =
+      this.config.get<string>('AIRBNB_RECEIVER_EMAIL') ?? this.receiverEmail;
 
     if (!apiKey) {
       this.logger.warn(
@@ -68,6 +80,32 @@ export class EmailService {
         <hr />
         <p style="color:#888;font-size:12px;">Este es un correo automático de confirmación, no necesitás responderlo.</p>
       `,
+    });
+  }
+
+  /**
+   * Notifies Mariano that a guest left a recommendation via the Airbnb
+   * guest guide. Private by design: no auto-reply is sent to the guest.
+   */
+  async sendRecommendationNotification(data: RecommendationEmailData): Promise<boolean> {
+    if (!this.airbnbReceiverEmail) {
+      this.logger.warn(
+        'AIRBNB_RECEIVER_EMAIL / CONTACT_RECEIVER_EMAIL is not set — skipping recommendation notification email.',
+      );
+      return false;
+    }
+
+    return this.send({
+      to: this.airbnbReceiverEmail,
+      subject: `[Guía Airbnb] Nueva recomendación de ${data.name}`,
+      html: `
+        <h2>Nueva recomendación de un huésped</h2>
+        <p><strong>Nombre:</strong> ${escapeHtml(data.name)}</p>
+        <p><strong>Email:</strong> ${escapeHtml(data.email)}</p>
+        <p><strong>Recomendación:</strong></p>
+        <p>${escapeHtml(data.message).replace(/\n/g, '<br />')}</p>
+      `,
+      replyTo: data.email,
     });
   }
 
