@@ -7,22 +7,22 @@ export type RecommendationDocument = HydratedDocument<Recommendation>;
 // Colección separada de 'contacts' (portfolio), pero en la misma base de datos.
 @Schema({ timestamps: true, collection: 'airbnb_recommendations' })
 export class Recommendation {
-  @Prop({ required: true, trim: true })
+  @Prop({ type: String, required: true, trim: true })
   name!: string;
 
-  @Prop({ required: true, trim: true, lowercase: true })
+  @Prop({ type: String, required: true, trim: true, lowercase: true })
   email!: string;
 
-  @Prop({ required: true, trim: true })
+  @Prop({ type: String, required: true, trim: true })
   message!: string;
 
-  @Prop()
+  @Prop({ type: String })
   ip?: string;
 
-  @Prop()
+  @Prop({ type: String })
   userAgent?: string;
 
-  @Prop({ default: false })
+  @Prop({ type: Boolean, default: false })
   notificationSent!: boolean;
 }
 

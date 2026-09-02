@@ -8,19 +8,19 @@ export type OrderDocument = HydratedDocument<Order>;
 // GuitarTypercript) — el catálogo en sí no vive en esta base de datos.
 @Schema({ _id: false })
 export class OrderItem {
-  @Prop({ required: true })
+  @Prop({ type: String, required: true })
   guitarId!: string;
 
-  @Prop({ required: true, trim: true })
+  @Prop({ type: String, required: true, trim: true })
   name!: string;
 
-  @Prop({ required: true })
+  @Prop({ type: Number, required: true })
   price!: number;
 
-  @Prop({ required: true, min: 1 })
+  @Prop({ type: Number, required: true, min: 1 })
   quantity!: number;
 
-  @Prop()
+  @Prop({ type: String })
   image?: string;
 }
 
@@ -36,7 +36,7 @@ export class Order {
   @Prop({ type: [OrderItemSchema], required: true })
   items!: OrderItem[];
 
-  @Prop({ required: true, min: 0 })
+  @Prop({ type: Number, required: true, min: 0 })
   total!: number;
 }
 

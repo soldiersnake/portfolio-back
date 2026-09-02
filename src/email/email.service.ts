@@ -19,6 +19,35 @@ interface AudifonosSubscriberEmailData {
   email: string;
 }
 
+interface TiendaMuebleContactEmailData {
+  nombre: string;
+  email: string;
+  asunto: string;
+  mensaje: string;
+  telefono?: string;
+  pais?: string;
+  tipo?: string;
+  categoria?: string;
+}
+
+interface TiendaMuebleOrderItemEmailData {
+  name: string;
+  price: number;
+  quantity: number;
+  image?: string;
+}
+
+interface TiendaMuebleOrderConfirmationEmailData {
+  orderId: string;
+  userEmail: string;
+  userName?: string;
+  items: TiendaMuebleOrderItemEmailData[];
+  total: number;
+  shippingAddress: string;
+  postalCode: string;
+  phone: string;
+}
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
@@ -28,6 +57,8 @@ export class EmailService {
 
   private readonly airbnbReceiverEmail: string;
   private readonly audifonosReceiverEmail: string;
+  private readonly tiendaMuebleReceiverEmail: string;
+  private readonly tiendaMuebleFrontendUrl: string;
 
   constructor(private readonly config: ConfigService) {
     const apiKey = this.config.get<string>('RESEND_API_KEY');
@@ -40,6 +71,18 @@ export class EmailService {
     // Idem para los nuevos suscriptores del newsletter de TechPRO (audifonos).
     this.audifonosReceiverEmail =
       this.config.get<string>('AUDIFONOS_RECEIVER_EMAIL') ?? this.receiverEmail;
+    // Idem para el formulario de contacto de TiendaMueble.
+    this.tiendaMuebleReceiverEmail =
+      this.config.get<string>('TIENDA_MUEBLE_RECEIVER_EMAIL') ?? this.receiverEmail;
+    // Misma variable que usa StripeService para las URLs de retorno (ver
+    // stripe.service.ts) — acá se reutiliza solo para poder armar URLs
+    // absolutas de imagen en el email (las de los 6 productos originales son
+    // rutas relativas tipo /img/productos/x.jpg, servidas por el frontend
+    // público; un cliente de correo no tiene dominio implícito como el
+    // navegador, así que necesitan el origen completo).
+    this.tiendaMuebleFrontendUrl = (
+      this.config.get<string>('TIENDA_MUEBLE_FRONTEND_URL') ?? 'http://localhost:5175'
+    ).trim();
 
     if (!apiKey) {
       this.logger.warn(
@@ -153,6 +196,158 @@ export class EmailService {
         <p style="color:#888;font-size:12px;">Este es un correo automático de confirmación, no necesitás responderlo.</p>
       `,
     });
+  }
+
+  /** Notifies Mariano that a new TiendaMueble contact form submission arrived. */
+  async sendTiendaMuebleOwnerNotification(data: TiendaMuebleContactEmailData): Promise<boolean> {
+    if (!this.tiendaMuebleReceiverEmail) {
+      this.logger.warn(
+        'TIENDA_MUEBLE_RECEIVER_EMAIL / CONTACT_RECEIVER_EMAIL is not set — skipping owner notification email.',
+      );
+      return false;
+    }
+
+    return this.send({
+      to: this.tiendaMuebleReceiverEmail,
+      subject: `[TiendaMueble] Nuevo mensaje: ${data.asunto}`,
+      html: `
+        <h2>Nuevo mensaje desde el formulario de contacto de TiendaMueble</h2>
+        <p><strong>Nombre:</strong> ${escapeHtml(data.nombre)}</p>
+        <p><strong>Email:</strong> ${escapeHtml(data.email)}</p>
+        <p><strong>Teléfono:</strong> ${escapeHtml(data.telefono ?? '-')}</p>
+        <p><strong>País:</strong> ${escapeHtml(data.pais ?? '-')}</p>
+        <p><strong>Tipo:</strong> ${escapeHtml(data.tipo ?? '-')}</p>
+        <p><strong>Categoría de interés:</strong> ${escapeHtml(data.categoria ?? '-')}</p>
+        <p><strong>Asunto:</strong> ${escapeHtml(data.asunto)}</p>
+        <p><strong>Mensaje:</strong></p>
+        <p>${escapeHtml(data.mensaje).replace(/\n/g, '<br />')}</p>
+      `,
+      replyTo: data.email,
+    });
+  }
+
+  /** Confirms to the sender that their TiendaMueble message was received. */
+  async sendTiendaMuebleSenderAutoReply(data: TiendaMuebleContactEmailData): Promise<boolean> {
+    return this.send({
+      to: data.email,
+      subject: 'Gracias por tu mensaje — TiendaMuebles',
+      html: `
+        <p>Hola ${escapeHtml(data.nombre)},</p>
+        <p>Gracias por escribirnos. Recibimos tu mensaje sobre "<strong>${escapeHtml(
+          data.asunto,
+        )}</strong>" y te vamos a responder a la brevedad.</p>
+        <p>Un saludo,<br />El equipo de TiendaMuebles</p>
+        <hr />
+        <p style="color:#888;font-size:12px;">Este es un correo automático de confirmación, no necesitás responderlo.</p>
+      `,
+    });
+  }
+
+  /**
+   * Comprobante de compra para el cliente. Se dispara una sola vez, desde
+   * OrdersService.handleStripeWebhookEvent, justo cuando el pedido pasa a
+   * "paid" por primera vez (evento verificado de Stripe) — nunca antes,
+   * para no confirmar una compra que todavía puede fallar o cancelarse.
+   */
+  async sendTiendaMuebleOrderConfirmation(data: TiendaMuebleOrderConfirmationEmailData): Promise<boolean> {
+    return this.send({
+      to: data.userEmail,
+      subject: `Pedido confirmado — TiendaMuebles (#${data.orderId.slice(-8)})`,
+      html: `
+        <h2>¡Gracias por tu compra${data.userName ? `, ${escapeHtml(data.userName)}` : ''}!</h2>
+        <p>Confirmamos que tu pago fue procesado correctamente. Este email es tu comprobante de compra.</p>
+        <p><strong>Nº de pedido:</strong> ${escapeHtml(data.orderId)}</p>
+        ${this.renderOrderItemsTable(data.items, data.total)}
+        <h3>Datos de entrega</h3>
+        <p>
+          <strong>Dirección:</strong> ${escapeHtml(data.shippingAddress)}<br />
+          <strong>Código postal:</strong> ${escapeHtml(data.postalCode)}<br />
+          <strong>Teléfono de contacto:</strong> ${escapeHtml(data.phone)}
+        </p>
+        <p>Nos vamos a contactar al teléfono que dejaste para coordinar la entrega.</p>
+        <hr />
+        <p style="color:#888;font-size:12px;">Este es un correo automático de confirmación, no necesitás responderlo.</p>
+      `,
+    });
+  }
+
+  /** Avisa a Mariano (dueño de la tienda) que entró un pedido pagado, para que coordine la entrega. */
+  async sendTiendaMuebleOrderOwnerNotification(data: TiendaMuebleOrderConfirmationEmailData): Promise<boolean> {
+    if (!this.tiendaMuebleReceiverEmail) {
+      this.logger.warn(
+        'TIENDA_MUEBLE_RECEIVER_EMAIL / CONTACT_RECEIVER_EMAIL is not set — skipping order owner notification email.',
+      );
+      return false;
+    }
+
+    return this.send({
+      to: this.tiendaMuebleReceiverEmail,
+      subject: `[TiendaMueble] Nuevo pedido pagado — #${data.orderId.slice(-8)}`,
+      html: `
+        <h2>Nuevo pedido pagado</h2>
+        <p><strong>Cliente:</strong> ${escapeHtml(data.userName ?? data.userEmail)} (${escapeHtml(data.userEmail)})</p>
+        <p><strong>Nº de pedido:</strong> ${escapeHtml(data.orderId)}</p>
+        ${this.renderOrderItemsTable(data.items, data.total)}
+        <h3>Datos de entrega</h3>
+        <p>
+          <strong>Dirección:</strong> ${escapeHtml(data.shippingAddress)}<br />
+          <strong>Código postal:</strong> ${escapeHtml(data.postalCode)}<br />
+          <strong>Teléfono de contacto:</strong> ${escapeHtml(data.phone)}
+        </p>
+      `,
+      replyTo: data.userEmail,
+    });
+  }
+
+  private renderOrderItemsTable(items: TiendaMuebleOrderItemEmailData[], total: number): string {
+    const rows = items
+      .map((item) => {
+        const imageUrl = this.resolveTiendaMuebleImageUrl(item.image);
+        const subtotal = (item.price * item.quantity).toFixed(2);
+        return `
+          <tr>
+            <td style="padding:8px;border-bottom:1px solid #eee;">
+              ${
+                imageUrl
+                  ? `<img src="${imageUrl}" alt="${escapeHtml(item.name)}" width="56" height="56" style="object-fit:cover;border-radius:4px;display:block;" />`
+                  : ''
+              }
+            </td>
+            <td style="padding:8px;border-bottom:1px solid #eee;">${escapeHtml(item.name)}</td>
+            <td style="padding:8px;border-bottom:1px solid #eee;text-align:center;">${item.quantity}</td>
+            <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">€${item.price.toFixed(2)}</td>
+            <td style="padding:8px;border-bottom:1px solid #eee;text-align:right;">€${subtotal}</td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    return `
+      <table style="width:100%;border-collapse:collapse;margin:16px 0;">
+        <thead>
+          <tr style="text-align:left;">
+            <th style="padding:8px;border-bottom:2px solid #333;"></th>
+            <th style="padding:8px;border-bottom:2px solid #333;">Producto</th>
+            <th style="padding:8px;border-bottom:2px solid #333;text-align:center;">Cant.</th>
+            <th style="padding:8px;border-bottom:2px solid #333;text-align:right;">Precio</th>
+            <th style="padding:8px;border-bottom:2px solid #333;text-align:right;">Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          <tr>
+            <td colspan="4" style="padding:8px;text-align:right;"><strong>Total</strong></td>
+            <td style="padding:8px;text-align:right;"><strong>€${total.toFixed(2)}</strong></td>
+          </tr>
+        </tfoot>
+      </table>
+    `;
+  }
+
+  private resolveTiendaMuebleImageUrl(image?: string): string | undefined {
+    if (!image) return undefined;
+    if (/^https?:\/\//i.test(image)) return image;
+    return `${this.tiendaMuebleFrontendUrl}${image.startsWith('/') ? '' : '/'}${image}`;
   }
 
   private async send(params: { to: string; subject: string; html: string; replyTo?: string }): Promise<boolean> {

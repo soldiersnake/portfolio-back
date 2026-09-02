@@ -7,6 +7,7 @@ import { ContactModule } from './contact/contact.module.js';
 import { RecommendationsModule } from './recommendations/recommendations.module.js';
 import { GuitarsModule } from './guitars/guitars.module.js';
 import { AudifonosModule } from './audifonos/audifonos.module.js';
+import { TiendaMuebleModule } from './tienda-mueble/tienda-mueble.module.js';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { AudifonosModule } from './audifonos/audifonos.module.js';
     RecommendationsModule,
     GuitarsModule,
     AudifonosModule,
+    TiendaMuebleModule,
   ],
   controllers: [AppController],
   providers: [AppService],

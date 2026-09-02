@@ -8,19 +8,19 @@ export type SubscriberDocument = HydratedDocument<Subscriber>;
 // misma base de datos que el resto del backend.
 @Schema({ timestamps: true, collection: 'audifonos_subscribers' })
 export class Subscriber {
-  @Prop({ required: true, trim: true, lowercase: true, unique: true })
+  @Prop({ type: String, required: true, trim: true, lowercase: true, unique: true })
   email!: string;
 
-  @Prop()
+  @Prop({ type: String })
   ip?: string;
 
-  @Prop()
+  @Prop({ type: String })
   userAgent?: string;
 
-  @Prop({ default: false })
+  @Prop({ type: Boolean, default: false })
   notificationSent!: boolean;
 
-  @Prop({ default: false })
+  @Prop({ type: Boolean, default: false })
   confirmationSent!: boolean;
 }
 
