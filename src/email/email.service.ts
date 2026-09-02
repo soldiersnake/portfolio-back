@@ -15,6 +15,10 @@ interface RecommendationEmailData {
   message: string;
 }
 
+interface AudifonosSubscriberEmailData {
+  email: string;
+}
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
@@ -23,6 +27,7 @@ export class EmailService {
   private readonly receiverEmail: string;
 
   private readonly airbnbReceiverEmail: string;
+  private readonly audifonosReceiverEmail: string;
 
   constructor(private readonly config: ConfigService) {
     const apiKey = this.config.get<string>('RESEND_API_KEY');
@@ -32,6 +37,9 @@ export class EmailService {
     // si no se define, cae en la misma que las notificaciones del portfolio.
     this.airbnbReceiverEmail =
       this.config.get<string>('AIRBNB_RECEIVER_EMAIL') ?? this.receiverEmail;
+    // Idem para los nuevos suscriptores del newsletter de TechPRO (audifonos).
+    this.audifonosReceiverEmail =
+      this.config.get<string>('AUDIFONOS_RECEIVER_EMAIL') ?? this.receiverEmail;
 
     if (!apiKey) {
       this.logger.warn(
@@ -106,6 +114,44 @@ export class EmailService {
         <p>${escapeHtml(data.message).replace(/\n/g, '<br />')}</p>
       `,
       replyTo: data.email,
+    });
+  }
+
+  /**
+   * Notifies Mariano that someone subscribed to the TechPRO (audifonos)
+   * newsletter.
+   */
+  async sendAudifonosSubscriberNotification(data: AudifonosSubscriberEmailData): Promise<boolean> {
+    if (!this.audifonosReceiverEmail) {
+      this.logger.warn(
+        'AUDIFONOS_RECEIVER_EMAIL / CONTACT_RECEIVER_EMAIL is not set — skipping subscriber notification email.',
+      );
+      return false;
+    }
+
+    return this.send({
+      to: this.audifonosReceiverEmail,
+      subject: '[TechPRO] Nuevo suscriptor al newsletter',
+      html: `
+        <h2>Nuevo suscriptor al newsletter de TechPRO</h2>
+        <p><strong>Email:</strong> ${escapeHtml(data.email)}</p>
+      `,
+    });
+  }
+
+  /** Confirms to the subscriber that they successfully joined the newsletter. */
+  async sendAudifonosSubscriptionConfirmation(data: AudifonosSubscriberEmailData): Promise<boolean> {
+    return this.send({
+      to: data.email,
+      subject: '¡Bienvenido a TechPRO!',
+      html: `
+        <p>Hola,</p>
+        <p>Gracias por sumarte al newsletter de <strong>TechPRO</strong>. A partir de ahora vas a recibir
+        novedades sobre lanzamientos, descuentos exclusivos y contenido sobre nuestros audífonos.</p>
+        <p>Un saludo,<br />El equipo de TechPRO</p>
+        <hr />
+        <p style="color:#888;font-size:12px;">Este es un correo automático de confirmación, no necesitás responderlo.</p>
+      `,
     });
   }
 

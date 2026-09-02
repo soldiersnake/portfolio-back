@@ -6,6 +6,7 @@ import { AppService } from './app.service.js';
 import { ContactModule } from './contact/contact.module.js';
 import { RecommendationsModule } from './recommendations/recommendations.module.js';
 import { GuitarsModule } from './guitars/guitars.module.js';
+import { AudifonosModule } from './audifonos/audifonos.module.js';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { GuitarsModule } from './guitars/guitars.module.js';
     ContactModule,
     RecommendationsModule,
     GuitarsModule,
+    AudifonosModule,
   ],
   controllers: [AppController],
   providers: [AppService],
