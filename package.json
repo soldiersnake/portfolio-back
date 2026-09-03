@@ -33,6 +33,7 @@
     "class-validator": "^0.15.1",
     "google-auth-library": "^9.15.0",
     "imagekit": "^6.0.0",
+    "mercadopago": "^3.6.0",
     "mongoose": "^9.9.4",
     "multer": "^2.0.1",
     "reflect-metadata": "^0.2.2",

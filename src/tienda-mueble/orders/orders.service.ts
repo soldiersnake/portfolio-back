@@ -2,10 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import type Stripe from 'stripe';
-import { TiendaMuebleOrder, TiendaMuebleOrderDocument } from '../schemas/order.schema.js';
+import { TiendaMuebleOrder, TiendaMuebleOrderDocument, TiendaMueblePaymentProvider } from '../schemas/order.schema.js';
 import { CreateTiendaMuebleOrderDto } from '../dto/create-order.dto.js';
 import type { TiendaMuebleAuthUser } from '../auth/auth.service.js';
 import { StripeService } from './stripe.service.js';
+import { MercadoPagoService } from './mercadopago.service.js';
 import { EmailService } from '../../email/email.service.js';
 import { getSpanishLocationFromPostalCode } from '../lib/spain-locations.js';
 
@@ -16,28 +17,26 @@ export class OrdersService {
   constructor(
     @InjectModel(TiendaMuebleOrder.name) private readonly orderModel: Model<TiendaMuebleOrderDocument>,
     private readonly stripeService: StripeService,
+    private readonly mercadoPagoService: MercadoPagoService,
     private readonly emailService: EmailService,
   ) {}
 
-  // Crea el pedido en estado "pending" y, en el mismo paso, la Checkout
-  // Session de Stripe que lo va a cobrar. El pedido queda guardado *antes*
-  // de llamar a Stripe para no perder el registro si algo falla en el medio
-  // — si la sesión de pago nunca se completa, el pedido simplemente queda
-  // pending/huérfano y no aparece como venta real en ningún lado.
-  async createCheckoutSession(dto: CreateTiendaMuebleOrderDto, user: TiendaMuebleAuthUser): Promise<{ url: string }> {
-    // El total se calcula acá a partir de los items ya validados por el
-    // DTO, nunca se confía en un total mandado por el cliente. Stripe cobra
-    // en base a los mismos items (ver StripeService), así que ambos números
-    // siempre coinciden.
+  // Crea el pedido en estado "pending", compartido por ambos proveedores de
+  // pago — el total y la ubicación siempre se calculan server-side acá,
+  // nunca se confía en nada mandado por el cliente más allá de los items y
+  // los datos de envío. Queda guardado *antes* de abrir el checkout en el
+  // proveedor que corresponda, para no perder el registro si algo falla en
+  // el medio (si el pago nunca se completa, el pedido simplemente queda
+  // pending/huérfano y no aparece como venta real en ningún lado).
+  private async createPendingOrder(
+    dto: CreateTiendaMuebleOrderDto,
+    user: TiendaMuebleAuthUser,
+    paymentProvider: TiendaMueblePaymentProvider,
+  ): Promise<TiendaMuebleOrderDocument> {
     const total = dto.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
-    // Provincia/comunidad autónoma se derivan acá del código postal (ya
-    // validado por el DTO) en vez de pedírselas al cliente: son un dato
-    // redundante con el postalCode, y calcularlas server-side evita
-    // guardar un valor inconsistente o manipulado.
     const location = getSpanishLocationFromPostalCode(dto.postalCode);
 
-    const order = await this.orderModel.create({
+    return this.orderModel.create({
       userEmail: user.email,
       userName: user.name,
       items: dto.items,
@@ -47,9 +46,15 @@ export class OrdersService {
       provincia: location?.provincia,
       comunidadAutonoma: location?.comunidadAutonoma,
       phone: dto.phone,
-      paymentProvider: 'stripe',
+      paymentProvider,
       paymentStatus: 'pending',
     });
+  }
+
+  // Crea el pedido + la Checkout Session de Stripe que lo va a cobrar (ver
+  // createPendingOrder para el porqué del orden de operaciones).
+  async createCheckoutSession(dto: CreateTiendaMuebleOrderDto, user: TiendaMuebleAuthUser): Promise<{ url: string }> {
+    const order = await this.createPendingOrder(dto, user, 'stripe');
 
     const { url, sessionId } = await this.stripeService.createCheckoutSession({
       id: (order._id as { toString(): string }).toString(),
@@ -57,6 +62,25 @@ export class OrdersService {
     });
 
     order.paymentReference = sessionId;
+    await order.save();
+
+    return { url };
+  }
+
+  // Mismo flujo que createCheckoutSession pero contra Mercado Pago Checkout
+  // Pro (ver MercadoPagoService — cobra en ARS, el pedido en Mongo sigue
+  // guardado en EUR como siempre). El external_reference que le pasamos acá
+  // es el id del pedido: es lo que usamos después para encontrarlo desde el
+  // webhook (ver handleMercadoPagoPaymentNotification).
+  async createMercadoPagoCheckout(dto: CreateTiendaMuebleOrderDto, user: TiendaMuebleAuthUser): Promise<{ url: string }> {
+    const order = await this.createPendingOrder(dto, user, 'mercadopago');
+
+    const { url, preferenceId } = await this.mercadoPagoService.createPreference({
+      id: (order._id as { toString(): string }).toString(),
+      items: dto.items,
+    });
+
+    order.paymentReference = preferenceId;
     await order.save();
 
     return { url };
@@ -70,6 +94,17 @@ export class OrdersService {
   // difícil de adivinar) podría ver el pedido de otra persona.
   async findBySessionForUser(sessionId: string, userEmail: string): Promise<TiendaMuebleOrderDocument | null> {
     const order = await this.orderModel.findOne({ paymentReference: sessionId });
+    if (!order || order.userEmail !== userEmail) return null;
+    return order;
+  }
+
+  // Mismo propósito que findBySessionForUser pero para /pedido-confirmado
+  // al volver de Mercado Pago: a diferencia de Stripe, Mercado Pago no
+  // agrega un id de sesión propio al back_url, así que el frontend manda de
+  // vuelta el external_reference que le pasamos al crear la preferencia —
+  // que es, justamente, el id del pedido.
+  async findByIdForUser(orderId: string, userEmail: string): Promise<TiendaMuebleOrderDocument | null> {
+    const order = await this.orderModel.findById(orderId).catch(() => null);
     if (!order || order.userEmail !== userEmail) return null;
     return order;
   }
@@ -123,10 +158,56 @@ export class OrdersService {
     }
   }
 
-  // Se ejecuta una sola vez por pedido, justo después de confirmar el pago.
-  // Envuelto en try/catch a propósito: si Resend falla (o no está
-  // configurado), no puede tirar abajo el webhook — Stripe interpretaría un
-  // error 500 como "no llegó" y reintentaría el evento indefinidamente.
+  // Contraparte de handleStripeWebhookEvent para Mercado Pago: al webhook
+  // (ya verificado por firma, ver MercadoPagoController) solo le interesa
+  // avisar "cambió el payment con este id", así que acá vamos a buscarlo
+  // para saber el estado real y a qué pedido corresponde
+  // (payment.external_reference, seteado al crear la preferencia).
+  async handleMercadoPagoPaymentNotification(paymentId: string): Promise<void> {
+    const payment = await this.mercadoPagoService.getPayment(paymentId);
+    const orderId = payment.external_reference;
+    if (!orderId) {
+      this.logger.warn(`Payment ${paymentId} de Mercado Pago sin external_reference`);
+      return;
+    }
+
+    const order = await this.orderModel.findById(orderId).catch(() => null);
+    if (!order) {
+      this.logger.warn(`Pedido ${orderId} no encontrado (Mercado Pago payment ${paymentId})`);
+      return;
+    }
+
+    // Mismo motivo que en Stripe: Mercado Pago puede volver a notificar el
+    // mismo payment (reintentos, o updates posteriores como un
+    // contracargo) — sin este chequeo, el email de confirmación se
+    // reenviaría cada vez.
+    const wasAlreadyPaid = order.paymentStatus === 'paid';
+    if (payment.status === 'approved') {
+      order.paymentStatus = 'paid';
+    } else if (payment.status === 'rejected' || payment.status === 'cancelled') {
+      order.paymentStatus = 'failed';
+    } else {
+      // in_process, pending, etc. (ej. rapipago/pago fácil: el comprador
+      // todavía no fue a pagar el cupón) — el pedido se queda "pending"
+      // hasta la próxima notificación.
+      order.paymentStatus = 'pending';
+    }
+    // Reemplaza el preferenceId inicial por el payment id real: es el dato
+    // útil para buscar el pago en el dashboard de Mercado Pago de acá en
+    // más.
+    order.paymentReference = String(payment.id ?? paymentId);
+    await order.save();
+
+    if (!wasAlreadyPaid && order.paymentStatus === 'paid') {
+      await this.sendOrderConfirmationEmails(order);
+    }
+  }
+
+  // Se ejecuta una sola vez por pedido, justo después de confirmar el pago
+  // (desde cualquiera de los dos webhooks). Envuelto en try/catch a
+  // propósito: si Resend falla (o no está configurado), no puede tirar
+  // abajo el webhook — tanto Stripe como Mercado Pago interpretarían un
+  // error 500 como "no llegó" y reintentarían el evento indefinidamente.
   private async sendOrderConfirmationEmails(order: TiendaMuebleOrderDocument): Promise<void> {
     const emailData = {
       orderId: (order._id as { toString(): string }).toString(),

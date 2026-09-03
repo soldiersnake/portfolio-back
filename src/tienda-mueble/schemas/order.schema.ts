@@ -23,10 +23,9 @@ export class TiendaMuebleOrderItem {
 
 export const TiendaMuebleOrderItemSchema = SchemaFactory.createForClass(TiendaMuebleOrderItem);
 
-// Único proveedor de pago soportado por ahora. Se deja como string (no enum
-// de Mongoose) para poder sumar 'mercadopago' en una etapa siguiente sin
-// tener que migrar documentos existentes.
-export type TiendaMueblePaymentProvider = 'stripe';
+// Se deja como string (no enum de Mongoose) para poder sumar más proveedores
+// en el futuro sin tener que migrar documentos existentes.
+export type TiendaMueblePaymentProvider = 'stripe' | 'mercadopago';
 export type TiendaMueblePaymentStatus = 'pending' | 'paid' | 'failed';
 
 // A diferencia del pedido de GuitarTypercript (anónimo, sin login), acá el
@@ -76,10 +75,12 @@ export class TiendaMuebleOrder {
   @Prop({ type: String, required: true, default: 'pending' })
   paymentStatus!: TiendaMueblePaymentStatus;
 
-  // Id de la Checkout Session de Stripe asociada a este pedido. Sirve tanto
-  // para recuperar el pedido desde el webhook (via metadata.orderId, pero
-  // esto queda como respaldo/trazabilidad) como para debug manual en el
-  // dashboard de Stripe.
+  // Id de la Checkout Session (Stripe) o del Payment (Mercado Pago, se
+  // actualiza desde el preference id inicial al payment id real una vez que
+  // llega el webhook) asociado a este pedido. Sirve tanto para recuperar el
+  // pedido (Stripe lo busca via metadata.orderId, Mercado Pago via
+  // external_reference — esto queda como respaldo/trazabilidad) como para
+  // debug manual en el dashboard de cada proveedor.
   @Prop({ type: String })
   paymentReference?: string;
 }

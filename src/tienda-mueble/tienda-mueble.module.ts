@@ -13,6 +13,7 @@ import { ImageKitService } from './products/imagekit.service.js';
 import { OrdersService } from './orders/orders.service.js';
 import { OrdersController } from './orders/orders.controller.js';
 import { StripeService } from './orders/stripe.service.js';
+import { MercadoPagoService } from './orders/mercadopago.service.js';
 import { TiendaMuebleContactService } from './contact/contact.service.js';
 import { TiendaMuebleContactController } from './contact/contact.controller.js';
 import { EmailModule } from '../email/email.module.js';
@@ -39,6 +40,14 @@ import { EmailModule } from '../email/email.module.js';
     }),
   ],
   controllers: [AuthController, ProductsController, OrdersController, TiendaMuebleContactController],
-  providers: [AuthService, ProductsService, ImageKitService, OrdersService, StripeService, TiendaMuebleContactService],
+  providers: [
+    AuthService,
+    ProductsService,
+    ImageKitService,
+    OrdersService,
+    StripeService,
+    MercadoPagoService,
+    TiendaMuebleContactService,
+  ],
 })
 export class TiendaMuebleModule {}
