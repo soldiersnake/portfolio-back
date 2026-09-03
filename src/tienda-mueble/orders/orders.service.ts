@@ -7,6 +7,7 @@ import { CreateTiendaMuebleOrderDto } from '../dto/create-order.dto.js';
 import type { TiendaMuebleAuthUser } from '../auth/auth.service.js';
 import { StripeService } from './stripe.service.js';
 import { EmailService } from '../../email/email.service.js';
+import { getSpanishLocationFromPostalCode } from '../lib/spain-locations.js';
 
 @Injectable()
 export class OrdersService {
@@ -30,6 +31,12 @@ export class OrdersService {
     // siempre coinciden.
     const total = dto.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
+    // Provincia/comunidad autónoma se derivan acá del código postal (ya
+    // validado por el DTO) en vez de pedírselas al cliente: son un dato
+    // redundante con el postalCode, y calcularlas server-side evita
+    // guardar un valor inconsistente o manipulado.
+    const location = getSpanishLocationFromPostalCode(dto.postalCode);
+
     const order = await this.orderModel.create({
       userEmail: user.email,
       userName: user.name,
@@ -37,6 +44,8 @@ export class OrdersService {
       total,
       shippingAddress: dto.shippingAddress,
       postalCode: dto.postalCode,
+      provincia: location?.provincia,
+      comunidadAutonoma: location?.comunidadAutonoma,
       phone: dto.phone,
       paymentProvider: 'stripe',
       paymentStatus: 'pending',
@@ -115,6 +124,7 @@ export class OrdersService {
       total: order.total,
       shippingAddress: order.shippingAddress,
       postalCode: order.postalCode,
+      provincia: order.provincia,
       phone: order.phone,
     };
 

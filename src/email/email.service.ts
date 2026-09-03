@@ -45,6 +45,7 @@ interface TiendaMuebleOrderConfirmationEmailData {
   total: number;
   shippingAddress: string;
   postalCode: string;
+  provincia?: string;
   phone: string;
 }
 
@@ -261,7 +262,7 @@ export class EmailService {
         <h3>Datos de entrega</h3>
         <p>
           <strong>Dirección:</strong> ${escapeHtml(data.shippingAddress)}<br />
-          <strong>Código postal:</strong> ${escapeHtml(data.postalCode)}<br />
+          <strong>Código postal:</strong> ${escapeHtml(data.postalCode)}${data.provincia ? ` (${escapeHtml(data.provincia)})` : ''}<br />
           <strong>Teléfono de contacto:</strong> ${escapeHtml(data.phone)}
         </p>
         <p>Nos vamos a contactar al teléfono que dejaste para coordinar la entrega.</p>
@@ -291,7 +292,7 @@ export class EmailService {
         <h3>Datos de entrega</h3>
         <p>
           <strong>Dirección:</strong> ${escapeHtml(data.shippingAddress)}<br />
-          <strong>Código postal:</strong> ${escapeHtml(data.postalCode)}<br />
+          <strong>Código postal:</strong> ${escapeHtml(data.postalCode)}${data.provincia ? ` (${escapeHtml(data.provincia)})` : ''}<br />
           <strong>Teléfono de contacto:</strong> ${escapeHtml(data.phone)}
         </p>
       `,

@@ -58,6 +58,15 @@ export class TiendaMuebleOrder {
   @Prop({ type: String, required: true, trim: true })
   postalCode!: string;
 
+  // Derivados del postalCode en el backend (ver lib/spain-locations.ts) al
+  // crear el pedido, nunca mandados por el cliente. Opcionales porque los
+  // pedidos creados antes de sumar este campo no lo tienen.
+  @Prop({ type: String, trim: true })
+  provincia?: string;
+
+  @Prop({ type: String, trim: true })
+  comunidadAutonoma?: string;
+
   @Prop({ type: String, required: true, trim: true })
   phone!: string;
 
