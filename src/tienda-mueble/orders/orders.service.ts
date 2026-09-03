@@ -62,6 +62,18 @@ export class OrdersService {
     return { url };
   }
 
+  // Usado desde /pedido-confirmado (frontend) para mostrar el resumen del
+  // pedido apenas el usuario vuelve de Stripe. Se busca por el session_id
+  // que Stripe agrega al success_url (no por el id del pedido, que el
+  // frontend no conoce en ese punto) y se exige que sea del mismo usuario
+  // logueado — sin esto, cualquiera con un session_id ajeno (aunque sea
+  // difícil de adivinar) podría ver el pedido de otra persona.
+  async findBySessionForUser(sessionId: string, userEmail: string): Promise<TiendaMuebleOrderDocument | null> {
+    const order = await this.orderModel.findOne({ paymentReference: sessionId });
+    if (!order || order.userEmail !== userEmail) return null;
+    return order;
+  }
+
   // Único punto donde un pedido pasa a "paid": nunca a partir del redirect
   // del navegador (el usuario podría cerrar la pestaña antes o el pago
   // podría fallar después del redirect), siempre a partir de un evento

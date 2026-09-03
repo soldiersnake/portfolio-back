@@ -2,8 +2,11 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   Headers,
   HttpCode,
+  NotFoundException,
+  Param,
   Post,
   Req,
   UseGuards,
@@ -37,6 +40,17 @@ export class OrdersController {
   @UseGuards(JwtAuthGuard, RateLimitGuard)
   createCheckoutSession(@Body() dto: CreateTiendaMuebleOrderDto, @CurrentUser() user: TiendaMuebleAuthUser) {
     return this.ordersService.createCheckoutSession(dto, user);
+  }
+
+  // Usado por /pedido-confirmado (frontend) al volver de Stripe, para mostrar
+  // el resumen del pedido. Ver OrdersService.findBySessionForUser para el
+  // detalle de por qué se busca por session_id y se valida el dueño.
+  @Get('by-session/:sessionId')
+  @UseGuards(JwtAuthGuard)
+  async getBySession(@Param('sessionId') sessionId: string, @CurrentUser() user: TiendaMuebleAuthUser) {
+    const order = await this.ordersService.findBySessionForUser(sessionId, user.email);
+    if (!order) throw new NotFoundException('Pedido no encontrado.');
+    return order;
   }
 
   // Endpoint público (sin JwtAuthGuard): lo llama Stripe, no el usuario
