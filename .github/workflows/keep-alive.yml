@@ -1,0 +1,39 @@
+name: Keep-alive portfolio-back
+
+# Evita que el free tier de Render duerma portfolio-back por inactividad
+# (lo que provoca cold-starts de 50s+ y, más grave, hace que Mercado Pago dé
+# por fallido el webhook de pago si el servidor tarda en responder — ver
+# incidente del 2026-09-04). Solo pinguea en horario laboral de España para
+# no gastar de más los minutos gratuitos de Actions ni el uso del propio
+# free tier de Render fuera de cuando realmente hace falta.
+on:
+  schedule:
+    # Cada 14 min, 08:00-16:59 UTC, lunes a viernes. GitHub Actions cron
+    # siempre corre en UTC — este rango cubre 10:00-17:00 hora de España
+    # tanto en CET (UTC+1, invierno) como en CEST (UTC+2, verano); el paso
+    # de abajo filtra el margen extra que queda por el cambio de horario.
+    - cron: '*/14 8-16 * * 1-5'
+  # Para poder probarlo a mano desde la pestaña Actions sin esperar al cron.
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar horario de España (10-17hs, lunes a viernes)
+        id: check
+        run: |
+          hour=$(TZ=Europe/Madrid date +%H)
+          weekday=$(TZ=Europe/Madrid date +%u) # 1=lunes ... 7=domingo
+          now=$(TZ=Europe/Madrid date)
+          if [ "$weekday" -ge 1 ] && [ "$weekday" -le 5 ] && [ "$hour" -ge 10 ] && [ "$hour" -lt 17 ]; then
+            echo "in_window=true" >> "$GITHUB_OUTPUT"
+            echo "Dentro de horario ($now, España) — se hace ping."
+          else
+            echo "in_window=false" >> "$GITHUB_OUTPUT"
+            echo "Fuera de horario ($now, España) — no se hace ping."
+          fi
+
+      - name: Ping a portfolio-back
+        if: steps.check.outputs.in_window == 'true'
+        run: curl -fsS https://portfolio-back-fz5i.onrender.com/ -o /dev/null
