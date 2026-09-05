@@ -49,6 +49,14 @@ interface TiendaMuebleOrderConfirmationEmailData {
   phone: string;
 }
 
+interface ArquitecturaContactEmailData {
+  nombre: string;
+  email: string;
+  mensaje: string;
+  telefono?: string;
+  modelo?: string;
+}
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
@@ -60,6 +68,7 @@ export class EmailService {
   private readonly audifonosReceiverEmail: string;
   private readonly tiendaMuebleReceiverEmail: string;
   private readonly tiendaMuebleFrontendUrl: string;
+  private readonly arquitecturaReceiverEmail: string;
 
   constructor(private readonly config: ConfigService) {
     const apiKey = this.config.get<string>('RESEND_API_KEY');
@@ -84,6 +93,9 @@ export class EmailService {
     this.tiendaMuebleFrontendUrl = (
       this.config.get<string>('TIENDA_MUEBLE_FRONTEND_URL') ?? 'http://localhost:5175'
     ).trim();
+    // Idem para el formulario de contacto/consulta de arquitectura.
+    this.arquitecturaReceiverEmail =
+      this.config.get<string>('ARQUITECTURA_RECEIVER_EMAIL') ?? this.receiverEmail;
 
     if (!apiKey) {
       this.logger.warn(
@@ -298,6 +310,107 @@ export class EmailService {
       `,
       replyTo: data.userEmail,
     });
+  }
+
+  /** Notifies Mariano that a new arquitectura contact/consultation form submission arrived. */
+  async sendArquitecturaOwnerNotification(data: ArquitecturaContactEmailData): Promise<boolean> {
+    if (!this.arquitecturaReceiverEmail) {
+      this.logger.warn(
+        'ARQUITECTURA_RECEIVER_EMAIL / CONTACT_RECEIVER_EMAIL is not set — skipping owner notification email.',
+      );
+      return false;
+    }
+
+    const heading = data.modelo
+      ? `Nueva consulta sobre el modelo "${escapeHtml(data.modelo)}"`
+      : 'Nuevo mensaje desde el formulario de contacto';
+
+    return this.send({
+      to: this.arquitecturaReceiverEmail,
+      subject: data.modelo
+        ? `[ArquitecturaBosque] Consulta: ${data.modelo}`
+        : '[ArquitecturaBosque] Nuevo mensaje de contacto',
+      html: this.renderArquitecturaEmailShell({
+        preheader: data.modelo
+          ? `Nueva consulta de ${data.nombre} sobre ${data.modelo}`
+          : `Nuevo mensaje de ${data.nombre}`,
+        title: heading,
+        bodyHtml: `
+          ${this.renderArquitecturaInfoRow('Nombre', escapeHtml(data.nombre))}
+          ${this.renderArquitecturaInfoRow('Email', escapeHtml(data.email))}
+          ${data.telefono ? this.renderArquitecturaInfoRow('Teléfono', escapeHtml(data.telefono)) : ''}
+          ${data.modelo ? this.renderArquitecturaInfoRow('Modelo de interés', escapeHtml(data.modelo)) : ''}
+          <p style="margin:24px 0 8px;font-family:Georgia,'Times New Roman',serif;font-size:13px;letter-spacing:0.06em;text-transform:uppercase;color:#5c6b57;">Mensaje</p>
+          <p style="margin:0;padding:16px;background:#f4f2ec;border-radius:8px;color:#33352f;line-height:1.6;">${escapeHtml(data.mensaje).replace(/\n/g, '<br />')}</p>
+        `,
+      }),
+      replyTo: data.email,
+    });
+  }
+
+  /** Confirms to the sender that their arquitectura message was received. */
+  async sendArquitecturaSenderAutoReply(data: ArquitecturaContactEmailData): Promise<boolean> {
+    return this.send({
+      to: data.email,
+      subject: 'Gracias por tu mensaje — ArquitecturaBosque',
+      html: this.renderArquitecturaEmailShell({
+        preheader: 'Recibimos tu mensaje y te vamos a responder a la brevedad.',
+        title: `Gracias, ${escapeHtml(data.nombre)}`,
+        bodyHtml: `
+          <p style="margin:0 0 16px;color:#33352f;line-height:1.7;">
+            Recibimos tu ${data.modelo ? `consulta sobre el modelo <strong>${escapeHtml(data.modelo)}</strong>` : 'mensaje'}
+            y nuestro equipo se va a poner en contacto con vos a la brevedad para conversar sobre tu futura casa en el bosque.
+          </p>
+          <p style="margin:0;color:#33352f;line-height:1.7;">
+            Mientras tanto, si preferís una respuesta más inmediata, también podés escribirnos directamente por WhatsApp.
+          </p>
+          <div style="margin:28px 0 4px;">
+            <a href="https://wa.me/34623912847" style="display:inline-block;background:#3f5b41;color:#f4f2ec;text-decoration:none;padding:12px 24px;border-radius:999px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;">Escribinos por WhatsApp</a>
+          </div>
+        `,
+      }),
+    });
+  }
+
+  /**
+   * Envuelve el contenido de un email de arquitectura en una plantilla con
+   * identidad de marca (verde bosque, tipografía serif para títulos) —
+   * pedido explícito de que estos correos sean más estéticos que los del
+   * resto de los proyectos, que usan HTML plano.
+   */
+  private renderArquitecturaEmailShell(options: { preheader: string; title: string; bodyHtml: string }): string {
+    return `
+      <div style="background:#e9e5d8;padding:32px 16px;font-family:Arial,Helvetica,sans-serif;">
+        <span style="display:none;max-height:0;overflow:hidden;opacity:0;">${escapeHtml(options.preheader)}</span>
+        <table role="presentation" width="100%" style="max-width:560px;margin:0 auto;border-collapse:collapse;background:#fffdf8;border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,0.06);">
+          <tr>
+            <td style="background:#2f4630;padding:28px 32px;">
+              <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:20px;letter-spacing:0.03em;color:#f4f2ec;">ArquitecturaBosque</p>
+              <p style="margin:4px 0 0;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#b7c4b0;">Casas integradas al bosque</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px;">
+              <h1 style="margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:normal;color:#2f4630;">${options.title}</h1>
+              ${options.bodyHtml}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px;background:#f4f2ec;border-top:1px solid #e3ded0;">
+              <p style="margin:0;font-size:12px;color:#7a8073;">ArquitecturaBosque · +34 623 912 847</p>
+            </td>
+          </tr>
+        </table>
+      </div>
+    `;
+  }
+
+  private renderArquitecturaInfoRow(label: string, value: string): string {
+    return `
+      <p style="margin:0 0 10px;font-size:14px;color:#33352f;">
+        <span style="display:inline-block;min-width:130px;color:#5c6b57;font-weight:bold;">${label}</span>${value}
+      </p>
+    `;
   }
 
   private renderOrderItemsTable(items: TiendaMuebleOrderItemEmailData[], total: number): string {
