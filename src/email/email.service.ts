@@ -57,6 +57,57 @@ interface ArquitecturaContactEmailData {
   modelo?: string;
 }
 
+interface GymInviteEmailData {
+  email: string;
+  firstName: string;
+  inviteToken: string;
+  centerName?: string;
+}
+
+interface GymWelcomeEmailData {
+  email: string;
+  firstName: string;
+}
+
+interface GymPaymentEmailData {
+  email: string;
+  firstName: string;
+  planName: string;
+  amount: number;
+  currency: string;
+  periodEnd: Date;
+}
+
+interface GymManualPaymentAdminEmailData {
+  email: string;
+  memberName: string;
+  planName: string;
+  amount: number;
+  currency: string;
+  processedByName: string;
+}
+
+interface GymClassSpotAvailableEmailData {
+  email: string;
+  firstName: string;
+  className: string;
+  sessionDate: Date;
+}
+
+interface GymAnnouncementEmailData {
+  email: string;
+  firstName: string;
+  title: string;
+  body?: string;
+}
+
+interface GymMembershipExpiringSoonEmailData {
+  email: string;
+  firstName: string;
+  daysLeft: number;
+  membershipEndDate: Date;
+}
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
@@ -69,6 +120,7 @@ export class EmailService {
   private readonly tiendaMuebleReceiverEmail: string;
   private readonly tiendaMuebleFrontendUrl: string;
   private readonly arquitecturaReceiverEmail: string;
+  private readonly gymFrontendUrl: string;
 
   constructor(private readonly config: ConfigService) {
     const apiKey = this.config.get<string>('RESEND_API_KEY');
@@ -96,6 +148,13 @@ export class EmailService {
     // Idem para el formulario de contacto/consulta de arquitectura.
     this.arquitecturaReceiverEmail =
       this.config.get<string>('ARQUITECTURA_RECEIVER_EMAIL') ?? this.receiverEmail;
+    // Igual que TIENDA_MUEBLE_FRONTEND_URL: se usa solo para armar el link
+    // absoluto de "aceptar invitación" que recibe el socio dado de alta por
+    // un admin (ver GymUsersService.createByAdmin) — no confundir con
+    // FRONTEND_URL, que es la lista de orígenes CORS.
+    this.gymFrontendUrl = (
+      this.config.get<string>('GYM_FRONTEND_URL') ?? 'http://localhost:5177'
+    ).trim();
 
     if (!apiKey) {
       this.logger.warn(
@@ -369,6 +428,230 @@ export class EmailService {
           </div>
         `,
       }),
+    });
+  }
+
+  /**
+   * Invitación para que un socio dado de alta manualmente por un admin (ej.
+   * en recepción, ver GymUsersService.createByAdmin) complete su acceso
+   * eligiendo contraseña o vinculando Google. No depende de RESEND_API_KEY
+   * para nada específico de Gym — usa el mismo remitente/config general.
+   */
+  async sendGymInviteEmail(data: GymInviteEmailData): Promise<boolean> {
+    const acceptUrl = `${this.gymFrontendUrl}/invitacion/${encodeURIComponent(data.inviteToken)}`;
+
+    // El log genérico de `send()` en modo dev (sin RESEND_API_KEY) solo
+    // imprime el subject, no el link — acá sí hace falta el link a mano
+    // para poder probar el flujo de accept-invite en local sin tener que ir
+    // a buscar el inviteToken directo en Mongo.
+    if (!this.resend) {
+      this.logger.log(`[DEV] Invite link for ${data.email}: ${acceptUrl}`);
+    }
+
+    return this.send({
+      to: data.email,
+      subject: '¡Te invitaron a GymBro! Activá tu acceso',
+      html: `
+        <p>Hola ${escapeHtml(data.firstName)},</p>
+        <p>${
+          data.centerName ? `El equipo de <strong>${escapeHtml(data.centerName)}</strong>` : 'Tu gimnasio'
+        } te dio de alta como socio en GymBro. Para poder entrar a la app, elegir tu contraseña (o vincular tu cuenta de Google) y ver tu carnet digital, activá tu acceso desde el siguiente enlace:</p>
+        <p>
+          <a href="${acceptUrl}" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;">Activar mi acceso</a>
+        </p>
+        <p style="color:#888;font-size:13px;">Si el botón no funciona, copiá y pegá este enlace en tu navegador:<br />${acceptUrl}</p>
+        <p style="color:#888;font-size:13px;">Este enlace vence en unos días. Si no esperabas este correo, podés ignorarlo.</p>
+      `,
+    });
+  }
+
+  /**
+   * Confirmación de alta para el socio que se autoregistró (email/contraseña
+   * o Google, ver GymAuthService.registerWithEmail y .loginWithGoogle) — a
+   * diferencia de sendGymInviteEmail, acá la cuenta ya está activa de
+   * entrada (no hace falta token ni acción de activación), así que el
+   * enlace lleva directo a la app.
+   */
+  async sendGymWelcomeEmail(data: GymWelcomeEmailData): Promise<boolean> {
+    if (!this.resend) {
+      this.logger.log(`[DEV] Welcome email would be sent to ${data.email} (app: ${this.gymFrontendUrl})`);
+    }
+
+    return this.send({
+      to: data.email,
+      subject: '¡Bienvenido/a a GymBro!',
+      html: `
+        <p>Hola ${escapeHtml(data.firstName)},</p>
+        <p>Tu cuenta en GymBro ya está activa. Desde la app vas a poder ver tu carnet digital con QR, reservar clases, seguir tu progreso y estar al tanto de anuncios de tu gimnasio.</p>
+        <p>
+          <a href="${this.gymFrontendUrl}" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;">Entrar a GymBro</a>
+        </p>
+        <p style="color:#888;font-size:13px;">Es una app web instalable: abrí el enlace desde tu celular y elegí "Agregar a pantalla de inicio" (o "Instalar app") para tenerla como cualquier otra app, sin pasar por ninguna tienda de aplicaciones.</p>
+        <p style="color:#888;font-size:13px;">Si el botón no funciona, copiá y pegá este enlace en tu navegador:<br />${this.gymFrontendUrl}</p>
+      `,
+    });
+  }
+
+  /**
+   * Confirmación de pago acreditado (Stripe o Mercado Pago, ver
+   * GymPaymentsService.markPaymentPaid) — se manda una sola vez por pago
+   * gracias a la idempotencia del webhook, así que acá no hace falta
+   * ninguna lógica extra de "no duplicar".
+   */
+  async sendGymPaymentConfirmationEmail(data: GymPaymentEmailData): Promise<boolean> {
+    const formattedAmount = `${data.amount.toFixed(2)} ${data.currency.toUpperCase()}`;
+    const formattedPeriodEnd = data.periodEnd.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+
+    if (!this.resend) {
+      this.logger.log(`[DEV] Payment confirmation email would be sent to ${data.email} (plan: ${data.planName}, ${formattedAmount})`);
+    }
+
+    return this.send({
+      to: data.email,
+      subject: '¡Pago confirmado! Tu membresía de GymBro está activa',
+      html: `
+        <p>Hola ${escapeHtml(data.firstName)},</p>
+        <p>Recibimos tu pago y tu membresía ya está activa.</p>
+        <p>
+          <strong>Plan:</strong> ${escapeHtml(data.planName)}<br />
+          <strong>Importe:</strong> ${formattedAmount}<br />
+          <strong>Válida hasta:</strong> ${formattedPeriodEnd}
+        </p>
+        <p>
+          <a href="${this.gymFrontendUrl}" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;">Ver mi carnet</a>
+        </p>
+        <p style="color:#888;font-size:13px;">Si el botón no funciona, copiá y pegá este enlace en tu navegador:<br />${this.gymFrontendUrl}</p>
+      `,
+    });
+  }
+
+  /**
+   * Aviso a los superadmins (todos, se consultan por rol — ver
+   * GymPaymentsService.notifySuperadminsOfManualPayment) cuando un admin o
+   * superadmin registra un pago manual (efectivo/transferencia) desde la
+   * ficha de un socio. El socio ya recibe su propia confirmación vía
+   * sendGymPaymentConfirmationEmail (mismo markPaymentPaid, sin importar el
+   * proveedor) — este mail es aparte, para que el resto del equipo tenga
+   * trazabilidad de quién cobró qué sin tener que entrar a Mongo.
+   */
+  async sendGymManualPaymentRecordedEmail(data: GymManualPaymentAdminEmailData): Promise<boolean> {
+    const formattedAmount = `${data.amount.toFixed(2)} ${data.currency.toUpperCase()}`;
+
+    if (!this.resend) {
+      this.logger.log(
+        `[DEV] Manual payment admin notification would be sent to ${data.email} (${data.memberName}, ${data.planName}, ${formattedAmount}, cobrado por ${data.processedByName})`,
+      );
+    }
+
+    return this.send({
+      to: data.email,
+      subject: `Pago manual registrado — ${data.memberName}`,
+      html: `
+        <p>Se registró un pago manual (efectivo/transferencia) en GymBro:</p>
+        <p>
+          <strong>Socio:</strong> ${escapeHtml(data.memberName)}<br />
+          <strong>Plan:</strong> ${escapeHtml(data.planName)}<br />
+          <strong>Importe:</strong> ${formattedAmount}<br />
+          <strong>Registrado por:</strong> ${escapeHtml(data.processedByName)}
+        </p>
+        <p style="color:#888;font-size:13px;">Aviso automático — no hace falta ninguna acción, es solo para llevar trazabilidad de los pagos cobrados a mano.</p>
+      `,
+    });
+  }
+
+  /**
+   * Aviso de que se liberó un lugar en una clase con lista de espera y el
+   * socio pasó de 'waitlisted' a 'booked' (ver
+   * GymClassesService.cancelBooking → GymNotificationsService.
+   * notifyClassSpotAvailable). Se manda junto con el push (si está
+   * configurado, ver gym-web-push.service.ts) — el email es el respaldo
+   * para quien no tiene notificaciones push activadas en el navegador.
+   */
+  async sendGymClassSpotAvailableEmail(data: GymClassSpotAvailableEmailData): Promise<boolean> {
+    const formattedDate = data.sessionDate.toLocaleDateString('es-ES', {
+      weekday: 'long',
+      day: '2-digit',
+      month: 'long',
+    });
+
+    if (!this.resend) {
+      this.logger.log(`[DEV] Class spot available email would be sent to ${data.email} (${data.className}, ${formattedDate})`);
+    }
+
+    return this.send({
+      to: data.email,
+      subject: `¡Se liberó un lugar en "${data.className}"!`,
+      html: `
+        <p>Hola ${escapeHtml(data.firstName)},</p>
+        <p>Buenas noticias: se liberó un lugar en <strong>${escapeHtml(data.className)}</strong> del <strong>${formattedDate}</strong> y ya quedaste confirmado/a (pasaste de la lista de espera a reservado).</p>
+        <p>
+          <a href="${this.gymFrontendUrl}" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;">Ver mis clases</a>
+        </p>
+        <p style="color:#888;font-size:13px;">Si ya no podés ir, cancelá tu reserva desde la app para liberar el lugar a otro socio.</p>
+      `,
+    });
+  }
+
+  /**
+   * Envío masivo (uno por socio) al publicar un anuncio/promo — ver
+   * GymNotificationsService.publishAnnouncement. Separado de
+   * sendGymPaymentConfirmationEmail/etc. porque el contenido lo escribe un
+   * admin (título + cuerpo libres), no un dato estructurado del dominio.
+   */
+  async sendGymAnnouncementEmail(data: GymAnnouncementEmailData): Promise<boolean> {
+    if (!this.resend) {
+      this.logger.log(`[DEV] Announcement email would be sent to ${data.email}: ${data.title}`);
+    }
+
+    return this.send({
+      to: data.email,
+      subject: `[GymBro] ${data.title}`,
+      html: `
+        <p>Hola ${escapeHtml(data.firstName)},</p>
+        <p><strong>${escapeHtml(data.title)}</strong></p>
+        ${data.body ? `<p>${escapeHtml(data.body).replace(/\n/g, '<br />')}</p>` : ''}
+        <p>
+          <a href="${this.gymFrontendUrl}" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;">Abrir GymBro</a>
+        </p>
+      `,
+    });
+  }
+
+  /**
+   * Recordatorio de "membresía próxima a vencer" — disparado por
+   * GymRemindersService.sendExpiringSoonReminders (GitHub Action diaria, ver
+   * gym/reminders/), no por una acción del socio. Mismo umbral
+   * (EXPIRING_SOON_DAYS = 7 días) que el aviso visual del frontend
+   * (MembresiaPage/HomePage), para que ambos canales salgan en sintonía.
+   */
+  async sendGymMembershipExpiringSoonEmail(data: GymMembershipExpiringSoonEmailData): Promise<boolean> {
+    const formattedDate = data.membershipEndDate.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+    const daysLabel = data.daysLeft === 0 ? 'hoy' : `en ${data.daysLeft} día${data.daysLeft === 1 ? '' : 's'} (${formattedDate})`;
+
+    if (!this.resend) {
+      this.logger.log(`[DEV] Membership expiring soon email would be sent to ${data.email} (vence ${daysLabel})`);
+    }
+
+    return this.send({
+      to: data.email,
+      subject: data.daysLeft === 0 ? 'Tu membresía de GymBro vence hoy' : `Tu membresía de GymBro vence ${daysLabel}`,
+      html: `
+        <p>Hola ${escapeHtml(data.firstName)},</p>
+        <p>Te escribimos para avisarte que tu membresía vence <strong>${daysLabel}</strong>.</p>
+        <p>Si querés seguir entrenando sin interrupciones, renová o revisá tu plan desde la app.</p>
+        <p>
+          <a href="${this.gymFrontendUrl}/membresia" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:bold;">Ver mi membresía</a>
+        </p>
+        <p style="color:#888;font-size:13px;">Si preferís pausarla en vez de renovarla, también podés congelarla por 1 a 3 semanas desde la misma pantalla.</p>
+      `,
     });
   }
 

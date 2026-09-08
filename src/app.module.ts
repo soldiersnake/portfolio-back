@@ -9,6 +9,7 @@ import { GuitarsModule } from './guitars/guitars.module.js';
 import { AudifonosModule } from './audifonos/audifonos.module.js';
 import { TiendaMuebleModule } from './tienda-mueble/tienda-mueble.module.js';
 import { ArquitecturaModule } from './arquitectura/arquitectura.module.js';
+import { GymModule } from './gym/gym.module.js';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { ArquitecturaModule } from './arquitectura/arquitectura.module.js';
     AudifonosModule,
     TiendaMuebleModule,
     ArquitecturaModule,
+    GymModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -53,6 +53,17 @@ Usado por la guía de huéspedes de Airbnb (`airbnb-app/frontend`). Body esperad
 
 Responde `204 No Content` si todo salió bien. Igual que `/contact`, `company` es un honeypot silencioso. A diferencia del formulario de contacto, este flujo es **privado**: la recomendación se guarda en MongoDB (colección `airbnb_recommendations`) y se notifica solo a Mariano por email — no se envía ninguna auto-respuesta al huésped ni se muestra públicamente en el sitio.
 
+## Otros módulos
+
+Este backend también aloja, como módulos NestJS independientes con su propia
+base de datos/colecciones y su propio README, las APIs de otros proyectos del
+portfolio:
+
+- **`gym/`** — backend de GymBro (gestión de gimnasio: socios, membresías,
+  control de acceso por QR, anuncios, dashboard admin). Ver
+  [`src/gym/README.md`](./src/gym/README.md) para variables de entorno y
+  listado completo de endpoints.
+
 ## Variables de entorno
 
 Definidas en `.env` (a partir de `.env.example`):

@@ -20,7 +20,8 @@
     "test:cov": "vitest run --coverage",
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
-    "seed:tienda-mueble": "tsx scripts/seed-tienda-mueble.ts"
+    "seed:tienda-mueble": "tsx scripts/seed-tienda-mueble.ts",
+    "seed:gym-centers": "tsx scripts/seed-gym-centers.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
@@ -29,6 +30,7 @@
     "@nestjs/jwt": "^12.0.0",
     "@nestjs/mongoose": "^12.0.0",
     "@nestjs/platform-express": "^12.0.1",
+    "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "google-auth-library": "^9.15.0",
@@ -39,7 +41,8 @@
     "reflect-metadata": "^0.2.2",
     "resend": "^6.24.0",
     "rxjs": "^7.8.1",
-    "stripe": "^18.5.0"
+    "stripe": "^18.5.0",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@nestjs/cli": "^12.0.0",
@@ -50,6 +53,7 @@
     "@types/multer": "^1.4.12",
     "@types/node": "^24.0.0",
     "@types/supertest": "^7.0.0",
+    "@types/web-push": "^3.6.4",
     "@vitest/coverage-v8": "^4.1.2",
     "dotenv": "^16.4.7",
     "oxlint": "^1.58.0",

@@ -1,0 +1,24 @@
+name: GymBro membership expiration reminders
+
+# Dispara el recordatorio (push + email) a los socios cuya membresía vence
+# dentro de los próximos 7 días (ver EXPIRING_SOON_DAYS en
+# gym/reminders/reminders.service.ts). No hay cron nativo en el backend —
+# mismo motivo que keep-alive.yml: el free tier de Render no mantiene
+# procesos en segundo plano, así que el disparo diario tiene que venir de
+# afuera.
+on:
+  schedule:
+    # 08:00 UTC ≈ 09:00-10:00 hora de España según DST — horario tranquilo,
+    # ni de madrugada ni pisando el pico de uso de la app.
+    - cron: '0 8 * * *'
+  # Para poder probarlo a mano desde la pestaña Actions sin esperar al cron.
+  workflow_dispatch: {}
+
+jobs:
+  send-reminders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Disparar recordatorios de vencimiento
+        run: |
+          curl -fsS -X POST https://portfolio-back-fz5i.onrender.com/gym/reminders/expiring-soon \
+            -H "x-cron-secret: ${{ secrets.GYM_CRON_SECRET }}"
