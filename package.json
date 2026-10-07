@@ -21,7 +21,9 @@
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "seed:tienda-mueble": "tsx scripts/seed-tienda-mueble.ts",
-    "seed:gym-centers": "tsx scripts/seed-gym-centers.ts"
+    "seed:gym-centers": "tsx scripts/seed-gym-centers.ts",
+    "migrate:gym": "tsx scripts/migrate-gym-db.ts",
+    "migrate:gym:run": "tsx scripts/migrate-gym-db.ts --run"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
