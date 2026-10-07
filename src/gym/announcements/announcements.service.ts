@@ -5,6 +5,7 @@ import type { GymRequestUser } from '../auth/gym-request-user.interface.js';
 import { GymAnnouncement, type GymAnnouncementDocument } from '../schemas/gym-announcement.schema.js';
 import type { CreateGymAnnouncementDto } from './dto/create-announcement.dto.js';
 import type { UpdateGymAnnouncementDto } from './dto/update-announcement.dto.js';
+import { GYM_DB_CONNECTION } from '../gym-db.constants.js';
 
 export interface GymAnnouncementSummary {
   id: string;
@@ -23,7 +24,7 @@ export interface GymAnnouncementSummary {
 
 @Injectable()
 export class GymAnnouncementsService {
-  constructor(@InjectModel(GymAnnouncement.name) private readonly announcementModel: Model<GymAnnouncementDocument>) {}
+  constructor(@InjectModel(GymAnnouncement.name, GYM_DB_CONNECTION) private readonly announcementModel: Model<GymAnnouncementDocument>) {}
 
   // Lo que ve el socio: ya publicado (publishAt <= ahora) y no vencido
   // (expiresAt vacío o en el futuro). No hay CentersScope acá — el schema no

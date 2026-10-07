@@ -40,6 +40,7 @@ import { GymClassesService } from './classes/classes.service.js';
 import { GymClassesController } from './classes/classes.controller.js';
 import { GymRemindersService } from './reminders/reminders.service.js';
 import { GymRemindersController } from './reminders/reminders.controller.js';
+import { GYM_DB_CONNECTION } from './gym-db.constants.js';
 
 @Module({
   imports: [
@@ -55,7 +56,7 @@ import { GymRemindersController } from './reminders/reminders.controller.js';
       { name: GymPaymentSettings.name, schema: GymPaymentSettingsSchema },
       { name: GymCheckIn.name, schema: GymCheckInSchema },
       { name: GymMembershipEvent.name, schema: GymMembershipEventSchema },
-    ]),
+    ], GYM_DB_CONNECTION),
     EmailModule,
     // JWT propio de GymBro, separado del de tienda-mueble. Acá sí importa
     // la revocación/expiración porque hay roles admin/superadmin reales:

@@ -10,6 +10,7 @@ import { GymMembershipEvent, type GymMembershipEventDocument } from '../schemas/
 import { GymUser, type GymUserDocument } from '../schemas/gym-user.schema.js';
 import type { ScanGymCheckInDto } from './dto/scan-checkin.dto.js';
 import type { ManualGymCheckInDto } from './dto/manual-checkin.dto.js';
+import { GYM_DB_CONNECTION } from '../gym-db.constants.js';
 
 export interface GymCheckInResult {
   checkInId: string;
@@ -26,9 +27,9 @@ export interface GymCheckInResult {
 @Injectable()
 export class GymCheckInsService {
   constructor(
-    @InjectModel(GymCheckIn.name) private readonly checkInModel: Model<GymCheckInDocument>,
-    @InjectModel(GymUser.name) private readonly userModel: Model<GymUserDocument>,
-    @InjectModel(GymMembershipEvent.name) private readonly eventModel: Model<GymMembershipEventDocument>,
+    @InjectModel(GymCheckIn.name, GYM_DB_CONNECTION) private readonly checkInModel: Model<GymCheckInDocument>,
+    @InjectModel(GymUser.name, GYM_DB_CONNECTION) private readonly userModel: Model<GymUserDocument>,
+    @InjectModel(GymMembershipEvent.name, GYM_DB_CONNECTION) private readonly eventModel: Model<GymMembershipEventDocument>,
     private readonly centersService: GymCentersService,
   ) {}
 

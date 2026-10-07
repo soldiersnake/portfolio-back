@@ -12,6 +12,7 @@ import {
   GymMembershipEvent,
   type GymMembershipEventDocument,
 } from '../schemas/gym-membership-event.schema.js';
+import { GYM_DB_CONNECTION } from '../gym-db.constants.js';
 
 // Franjas etarias fijas para el reparto de socios por edad (ver PLANNING.md
 // sección 4, "Dashboard*"). No son configurables por ahora — si en algún
@@ -54,9 +55,9 @@ export interface GymDashboardMetrics {
 @Injectable()
 export class GymDashboardService {
   constructor(
-    @InjectModel(GymUser.name) private readonly userModel: Model<GymUserDocument>,
-    @InjectModel(GymCheckIn.name) private readonly checkInModel: Model<GymCheckInDocument>,
-    @InjectModel(GymMembershipEvent.name) private readonly eventModel: Model<GymMembershipEventDocument>,
+    @InjectModel(GymUser.name, GYM_DB_CONNECTION) private readonly userModel: Model<GymUserDocument>,
+    @InjectModel(GymCheckIn.name, GYM_DB_CONNECTION) private readonly checkInModel: Model<GymCheckInDocument>,
+    @InjectModel(GymMembershipEvent.name, GYM_DB_CONNECTION) private readonly eventModel: Model<GymMembershipEventDocument>,
     private readonly centersService: GymCentersService,
   ) {}
 

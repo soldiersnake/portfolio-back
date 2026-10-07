@@ -19,6 +19,7 @@ import { GymUser, type GymUserDocument } from '../schemas/gym-user.schema.js';
 import type { CreateGymClassDto } from './dto/create-class.dto.js';
 import type { UpdateGymClassDto } from './dto/update-class.dto.js';
 import type { BookGymClassDto } from './dto/book-class.dto.js';
+import { GYM_DB_CONNECTION } from '../gym-db.constants.js';
 
 export interface GymClassSummary {
   id: string;
@@ -67,11 +68,11 @@ export interface GymClassRosterEntry {
 @Injectable()
 export class GymClassesService {
   constructor(
-    @InjectModel(GymClass.name) private readonly classModel: Model<GymClassDocument>,
-    @InjectModel(GymClassBooking.name) private readonly bookingModel: Model<GymClassBookingDocument>,
-    @InjectModel(GymUser.name) private readonly userModel: Model<GymUserDocument>,
-    @InjectModel(GymMembershipPlan.name) private readonly planModel: Model<GymMembershipPlanDocument>,
-    @InjectModel(GymMembershipEvent.name) private readonly eventModel: Model<GymMembershipEventDocument>,
+    @InjectModel(GymClass.name, GYM_DB_CONNECTION) private readonly classModel: Model<GymClassDocument>,
+    @InjectModel(GymClassBooking.name, GYM_DB_CONNECTION) private readonly bookingModel: Model<GymClassBookingDocument>,
+    @InjectModel(GymUser.name, GYM_DB_CONNECTION) private readonly userModel: Model<GymUserDocument>,
+    @InjectModel(GymMembershipPlan.name, GYM_DB_CONNECTION) private readonly planModel: Model<GymMembershipPlanDocument>,
+    @InjectModel(GymMembershipEvent.name, GYM_DB_CONNECTION) private readonly eventModel: Model<GymMembershipEventDocument>,
     private readonly centersService: GymCentersService,
     private readonly notificationsService: GymNotificationsService,
     private readonly imageKitService: GymImageKitService,

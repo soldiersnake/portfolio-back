@@ -20,6 +20,7 @@ import type { RecordManualPaymentDto } from './dto/record-manual-payment.dto.js'
 import type { UpdatePaymentSettingsDto } from './dto/update-payment-settings.dto.js';
 import { GymMercadoPagoService } from './gym-mercadopago.service.js';
 import { GymStripeService } from './gym-stripe.service.js';
+import { GYM_DB_CONNECTION } from '../gym-db.constants.js';
 
 export interface GymPaymentSummary {
   id: string;
@@ -44,11 +45,11 @@ export class GymPaymentsService {
   private readonly logger = new Logger(GymPaymentsService.name);
 
   constructor(
-    @InjectModel(GymPayment.name) private readonly paymentModel: Model<GymPaymentDocument>,
-    @InjectModel(GymUser.name) private readonly userModel: Model<GymUserDocument>,
-    @InjectModel(GymMembershipPlan.name) private readonly planModel: Model<GymMembershipPlanDocument>,
-    @InjectModel(GymMembershipEvent.name) private readonly eventModel: Model<GymMembershipEventDocument>,
-    @InjectModel(GymPaymentSettings.name) private readonly settingsModel: Model<GymPaymentSettingsDocument>,
+    @InjectModel(GymPayment.name, GYM_DB_CONNECTION) private readonly paymentModel: Model<GymPaymentDocument>,
+    @InjectModel(GymUser.name, GYM_DB_CONNECTION) private readonly userModel: Model<GymUserDocument>,
+    @InjectModel(GymMembershipPlan.name, GYM_DB_CONNECTION) private readonly planModel: Model<GymMembershipPlanDocument>,
+    @InjectModel(GymMembershipEvent.name, GYM_DB_CONNECTION) private readonly eventModel: Model<GymMembershipEventDocument>,
+    @InjectModel(GymPaymentSettings.name, GYM_DB_CONNECTION) private readonly settingsModel: Model<GymPaymentSettingsDocument>,
     private readonly stripeService: GymStripeService,
     private readonly mercadoPagoService: GymMercadoPagoService,
     private readonly emailService: EmailService,

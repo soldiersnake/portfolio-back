@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { GymUser, type GymUserDocument } from '../schemas/gym-user.schema.js';
 import { GymNotificationsService } from '../notifications/notifications.service.js';
+import { GYM_DB_CONNECTION } from '../gym-db.constants.js';
 
 // Mismo umbral que el aviso visual del frontend (ver EXPIRING_SOON_DAYS en
 // MembresiaPage.tsx/HomePage.tsx) — si se cambia acá, cambiarlo también ahí
@@ -30,7 +31,7 @@ export class GymRemindersService {
   private readonly logger = new Logger(GymRemindersService.name);
 
   constructor(
-    @InjectModel(GymUser.name) private readonly userModel: Model<GymUserDocument>,
+    @InjectModel(GymUser.name, GYM_DB_CONNECTION) private readonly userModel: Model<GymUserDocument>,
     private readonly notificationsService: GymNotificationsService,
   ) {}
 

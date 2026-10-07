@@ -15,6 +15,7 @@ import type { CreateGymMembershipPlanDto } from './dto/create-plan.dto.js';
 import type { UpdateGymMembershipPlanDto } from './dto/update-plan.dto.js';
 import type { UpdateGymMembershipStatusDto } from './dto/update-membership-status.dto.js';
 import type { FreezeGymMembershipDto } from './dto/freeze-membership.dto.js';
+import { GYM_DB_CONNECTION } from '../gym-db.constants.js';
 
 export interface GymMembershipPlanSummary {
   id: string;
@@ -33,9 +34,9 @@ export interface GymMembershipPlanSummary {
 @Injectable()
 export class GymMembershipsService {
   constructor(
-    @InjectModel(GymMembershipPlan.name) private readonly planModel: Model<GymMembershipPlanDocument>,
-    @InjectModel(GymUser.name) private readonly userModel: Model<GymUserDocument>,
-    @InjectModel(GymMembershipEvent.name) private readonly eventModel: Model<GymMembershipEventDocument>,
+    @InjectModel(GymMembershipPlan.name, GYM_DB_CONNECTION) private readonly planModel: Model<GymMembershipPlanDocument>,
+    @InjectModel(GymUser.name, GYM_DB_CONNECTION) private readonly userModel: Model<GymUserDocument>,
+    @InjectModel(GymMembershipEvent.name, GYM_DB_CONNECTION) private readonly eventModel: Model<GymMembershipEventDocument>,
     private readonly centersService: GymCentersService,
   ) {}
 

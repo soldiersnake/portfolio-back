@@ -5,6 +5,7 @@ import { GymCenter, type GymCenterDocument, type GymCenterScheduleSlot } from '.
 import { GymImageKitService } from '../users/gym-imagekit.service.js';
 import type { CreateGymCenterDto } from './dto/create-center.dto.js';
 import type { UpdateGymCenterDto } from './dto/update-center.dto.js';
+import { GYM_DB_CONNECTION } from '../gym-db.constants.js';
 
 export interface GymCenterSummary {
   id: string;
@@ -23,7 +24,7 @@ export interface GymCenterSummary {
 @Injectable()
 export class GymCentersService {
   constructor(
-    @InjectModel(GymCenter.name) private readonly centerModel: Model<GymCenterDocument>,
+    @InjectModel(GymCenter.name, GYM_DB_CONNECTION) private readonly centerModel: Model<GymCenterDocument>,
     private readonly imageKitService: GymImageKitService,
   ) {}
 

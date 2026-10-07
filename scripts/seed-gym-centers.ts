@@ -22,7 +22,8 @@
  * debería evitar importar el schema decorado, igual que acá.
  *
  * Uso: npm run seed:gym-centers   (desde portfolio-app/backend)
- * Requiere MONGODB_URI en .env (mismo que usa el resto del backend).
+ * Usa GYM_MONGODB_URI del .env (base dedicada de GymBro) y, si no está,
+ * cae a MONGODB_URI — misma regla que la conexión 'gym' en app.module.ts.
  */
 import 'dotenv/config';
 import mongoose from 'mongoose';
@@ -84,9 +85,9 @@ const centers = [
 ];
 
 async function main() {
-  const uri = process.env.MONGODB_URI;
+  const uri = process.env.GYM_MONGODB_URI || process.env.MONGODB_URI;
   if (!uri) {
-    console.error('MONGODB_URI is not set — check your .env file.');
+    console.error('Neither GYM_MONGODB_URI nor MONGODB_URI is set — check your .env file.');
     process.exit(1);
   }
 

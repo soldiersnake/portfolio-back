@@ -10,6 +10,7 @@ import { GymUser, type GymUserDocument } from '../schemas/gym-user.schema.js';
 import { GymWebPushService, type GymPushPayload } from './gym-web-push.service.js';
 import type { SubscribeGymPushDto } from './dto/subscribe-push.dto.js';
 import type { UnsubscribeGymPushDto } from './dto/unsubscribe-push.dto.js';
+import { GYM_DB_CONNECTION } from '../gym-db.constants.js';
 
 export interface GymAnnouncementPublishResult {
   notifiedPush: number;
@@ -21,8 +22,8 @@ export class GymNotificationsService {
   private readonly logger = new Logger(GymNotificationsService.name);
 
   constructor(
-    @InjectModel(GymUser.name) private readonly userModel: Model<GymUserDocument>,
-    @InjectModel(GymAnnouncement.name) private readonly announcementModel: Model<GymAnnouncementDocument>,
+    @InjectModel(GymUser.name, GYM_DB_CONNECTION) private readonly userModel: Model<GymUserDocument>,
+    @InjectModel(GymAnnouncement.name, GYM_DB_CONNECTION) private readonly announcementModel: Model<GymAnnouncementDocument>,
     private readonly webPushService: GymWebPushService,
     private readonly emailService: EmailService,
   ) {}

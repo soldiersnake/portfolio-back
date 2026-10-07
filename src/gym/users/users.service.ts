@@ -24,6 +24,7 @@ import type { UpdateGymProfileDto } from './dto/update-profile.dto.js';
 import type { AddGymWeightLogDto } from './dto/add-weight-log.dto.js';
 import type { UpdateGymMemberRoleDto } from './dto/update-member-role.dto.js';
 import { GymImageKitService } from './gym-imagekit.service.js';
+import { GYM_DB_CONNECTION } from '../gym-db.constants.js';
 
 // Cuánto tiempo queda vivo el link de invitación mandado por mail al socio
 // dado de alta manualmente por un admin (ver createByAdmin más abajo).
@@ -95,9 +96,9 @@ export class GymUsersService {
   private readonly logger = new Logger(GymUsersService.name);
 
   constructor(
-    @InjectModel(GymUser.name) private readonly userModel: Model<GymUserDocument>,
-    @InjectModel(GymWeightLog.name) private readonly weightLogModel: Model<GymWeightLogDocument>,
-    @InjectModel(GymMembershipEvent.name) private readonly eventModel: Model<GymMembershipEventDocument>,
+    @InjectModel(GymUser.name, GYM_DB_CONNECTION) private readonly userModel: Model<GymUserDocument>,
+    @InjectModel(GymWeightLog.name, GYM_DB_CONNECTION) private readonly weightLogModel: Model<GymWeightLogDocument>,
+    @InjectModel(GymMembershipEvent.name, GYM_DB_CONNECTION) private readonly eventModel: Model<GymMembershipEventDocument>,
     private readonly emailService: EmailService,
     private readonly imagekit: GymImageKitService,
     private readonly centersService: GymCentersService,

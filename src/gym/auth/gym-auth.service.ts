@@ -12,6 +12,7 @@ import { GymCentersService } from '../centers/centers.service.js';
 import type { RegisterDto } from './dto/register.dto.js';
 import type { LoginDto } from './dto/login.dto.js';
 import type { AcceptInviteDto } from './dto/accept-invite.dto.js';
+import { GYM_DB_CONNECTION } from '../gym-db.constants.js';
 
 // Forma pública de un GymUser devuelta al frontend después de login/registro
 // — nunca incluye passwordHash/inviteToken (que además ya tienen
@@ -47,7 +48,7 @@ export class GymAuthService {
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly centersService: GymCentersService,
-    @InjectModel(GymUser.name) private readonly userModel: Model<GymUserDocument>,
+    @InjectModel(GymUser.name, GYM_DB_CONNECTION) private readonly userModel: Model<GymUserDocument>,
   ) {
     // Cliente OAuth propio y separado del de tienda-mueble (GOOGLE_CLIENT_ID)
     // — GymBro usa su propio proyecto/cliente en Google Cloud, ver

@@ -5,6 +5,7 @@ import type { Request } from 'express';
 import { Model } from 'mongoose';
 import { GymUser, type GymUserDocument } from '../schemas/gym-user.schema.js';
 import type { GymRequestUser } from './gym-request-user.interface.js';
+import { GYM_DB_CONNECTION } from '../gym-db.constants.js';
 
 declare module 'express' {
   interface Request {
@@ -26,7 +27,7 @@ interface GymJwtPayload {
 export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
-    @InjectModel(GymUser.name) private readonly userModel: Model<GymUserDocument>,
+    @InjectModel(GymUser.name, GYM_DB_CONNECTION) private readonly userModel: Model<GymUserDocument>,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
