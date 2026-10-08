@@ -16,8 +16,12 @@ import { GymCentersService } from './centers.service.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { RolesGuard } from '../auth/roles.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
-import type { CreateGymCenterDto } from './dto/create-center.dto.js';
-import type { UpdateGymCenterDto } from './dto/update-center.dto.js';
+// OJO: import de valor, NO `import type`. Con `import type` TypeScript borra
+// la clase al compilar, el metadata del parámetro queda como `Object` y el
+// ValidationPipe (whitelist + forbidNonWhitelisted) rechaza todos los campos
+// con "property X should not exist" — era el 400 al crear una sede.
+import { CreateGymCenterDto } from './dto/create-center.dto.js';
+import { UpdateGymCenterDto } from './dto/update-center.dto.js';
 
 // Lectura abierta a cualquier socio autenticado (sin rol) — ver
 // listActive()/findById() en el service. La gestión de sedes

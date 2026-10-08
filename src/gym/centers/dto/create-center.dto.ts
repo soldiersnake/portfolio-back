@@ -12,6 +12,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
+import { IsSpanishPhone } from './phone.validation.js';
 import { GYM_CENTER_AMENITIES, type GymCenterAmenity } from '../../schemas/gym-center.schema.js';
 
 class GymCenterScheduleSlotDto {
@@ -51,10 +52,11 @@ export class CreateGymCenterDto {
 
   @IsOptional()
   @IsString()
+  @IsSpanishPhone()
   phone?: string;
 
   @IsOptional()
-  @IsEmail()
+  @IsEmail({}, { message: 'email must be a valid email address' })
   email?: string;
 
   @IsOptional()
