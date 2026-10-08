@@ -12,7 +12,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import { IsSpanishPhone } from './phone.validation.js';
+import { IsGoogleMapsUrl, IsSpanishPhone } from './center-field.validation.js';
 import { GYM_CENTER_AMENITIES, type GymCenterAmenity } from '../../schemas/gym-center.schema.js';
 
 class GymCenterScheduleSlotDto {
@@ -77,9 +77,9 @@ export class CreateGymCenterDto {
   photos?: string[];
 
   // Link de Google Maps de la sede (ver comentario en gym-center.schema.ts)
-  // — sin validación de formato estricta a propósito, puede ser un link
-  // corto o largo, ambos sirven igual como <a href>.
+  // — corto (maps.app.goo.gl) o largo (google.com/maps), ver IsGoogleMapsUrl.
   @IsOptional()
   @IsString()
+  @IsGoogleMapsUrl()
   googleMapsUrl?: string;
 }

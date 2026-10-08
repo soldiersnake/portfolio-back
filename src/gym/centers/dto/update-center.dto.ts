@@ -13,7 +13,7 @@ import {
   MinLength,
   ValidateNested,
 } from 'class-validator';
-import { IsSpanishPhone } from './phone.validation.js';
+import { IsGoogleMapsUrl, IsSpanishPhone } from './center-field.validation.js';
 import { GYM_CENTER_AMENITIES, type GymCenterAmenity } from '../../schemas/gym-center.schema.js';
 
 class GymCenterScheduleSlotDto {
@@ -77,6 +77,7 @@ export class UpdateGymCenterDto {
 
   @IsOptional()
   @IsString()
+  @IsGoogleMapsUrl()
   googleMapsUrl?: string;
 
   @IsOptional()

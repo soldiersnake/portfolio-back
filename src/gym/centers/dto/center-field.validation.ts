@@ -16,3 +16,17 @@ export function IsSpanishPhone() {
     Matches(SPANISH_PHONE_REGEX, { message: 'phone must be a valid Spanish phone number' }),
   );
 }
+
+// Link de Google Maps: acepta los formatos que genera "Compartir" en Maps
+// (maps.app.goo.gl/..., goo.gl/maps/...) y los links largos
+// (google.com/maps/..., google.es/maps/..., maps.google.com/...). Mismo
+// regex que el frontend (AdminSedesPage).
+export const GOOGLE_MAPS_URL_REGEX =
+  /^https?:\/\/(?:(?:www\.)?google\.[a-z]{2,3}(?:\.[a-z]{2})?\/maps|maps\.google\.[a-z]{2,3}(?:\.[a-z]{2})?|maps\.app\.goo\.gl|goo\.gl\/maps)(?:[/?#]\S*)?$/i;
+
+export function IsGoogleMapsUrl() {
+  return applyDecorators(
+    Transform(({ value }) => (typeof value === 'string' ? value.trim() : value)),
+    Matches(GOOGLE_MAPS_URL_REGEX, { message: 'googleMapsUrl must be a Google Maps link' }),
+  );
+}
