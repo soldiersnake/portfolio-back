@@ -10,7 +10,7 @@ import { AudifonosModule } from './audifonos/audifonos.module.js';
 import { TiendaMuebleModule } from './tienda-mueble/tienda-mueble.module.js';
 import { ArquitecturaModule } from './arquitectura/arquitectura.module.js';
 import { GymModule } from './gym/gym.module.js';
-import { GYM_DB_CONNECTION } from './gym/gym-db.constants.js';
+import { GYM_DB_CONNECTION, GYM_PLATFORM_CONNECTION, GYM_PLATFORM_DB_NAME } from './gym/gym-db.constants.js';
 
 @Module({
   imports: [
@@ -27,8 +27,21 @@ import { GYM_DB_CONNECTION } from './gym/gym-db.constants.js';
     MongooseModule.forRootAsync({
       connectionName: GYM_DB_CONNECTION,
       inject: [ConfigService],
+      // dbName pisa el nombre de base de la URI: así la misma URI del
+      // cluster sirve para la base del gimnasio y para gymbro_platform. Si
+      // GYM_DB_NAME no está, se usa la base de la URI (comportamiento previo).
       useFactory: (config: ConfigService) => ({
         uri: config.get<string>('GYM_MONGODB_URI') || config.get<string>('MONGODB_URI'),
+        dbName: config.get<string>('GYM_DB_NAME') || undefined,
+      }),
+    }),
+    // Base central de la plataforma: directorio de gimnasios (tenants).
+    MongooseModule.forRootAsync({
+      connectionName: GYM_PLATFORM_CONNECTION,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        uri: config.get<string>('GYM_MONGODB_URI') || config.get<string>('MONGODB_URI'),
+        dbName: GYM_PLATFORM_DB_NAME,
       }),
     }),
     ContactModule,

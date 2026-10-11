@@ -23,7 +23,8 @@
     "seed:tienda-mueble": "tsx scripts/seed-tienda-mueble.ts",
     "seed:gym-centers": "tsx scripts/seed-gym-centers.ts",
     "migrate:gym": "tsx scripts/migrate-gym-db.ts",
-    "migrate:gym:run": "tsx scripts/migrate-gym-db.ts --run"
+    "migrate:gym:run": "tsx scripts/migrate-gym-db.ts --run",
+    "tenant:create": "tsx scripts/create-gym-tenant.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",

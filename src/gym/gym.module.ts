@@ -40,7 +40,9 @@ import { GymClassesService } from './classes/classes.service.js';
 import { GymClassesController } from './classes/classes.controller.js';
 import { GymRemindersService } from './reminders/reminders.service.js';
 import { GymRemindersController } from './reminders/reminders.controller.js';
-import { GYM_DB_CONNECTION } from './gym-db.constants.js';
+import { GYM_DB_CONNECTION, GYM_PLATFORM_CONNECTION } from './gym-db.constants.js';
+import { GymTenant, GymTenantSchema } from './tenants/gym-tenant.schema.js';
+import { GymTenantsService } from './tenants/tenants.service.js';
 
 @Module({
   imports: [
@@ -57,6 +59,7 @@ import { GYM_DB_CONNECTION } from './gym-db.constants.js';
       { name: GymCheckIn.name, schema: GymCheckInSchema },
       { name: GymMembershipEvent.name, schema: GymMembershipEventSchema },
     ], GYM_DB_CONNECTION),
+    MongooseModule.forFeature([{ name: GymTenant.name, schema: GymTenantSchema }], GYM_PLATFORM_CONNECTION),
     EmailModule,
     // JWT propio de GymBro, separado del de tienda-mueble. Acá sí importa
     // la revocación/expiración porque hay roles admin/superadmin reales:
@@ -89,6 +92,7 @@ import { GYM_DB_CONNECTION } from './gym-db.constants.js';
   // JwtAuthGuard/AdminGuard en tienda-mueble — Nest los resuelve por DI sin
   // necesidad de declararlos como provider explícito.
   providers: [
+    GymTenantsService,
     GymAuthService,
     GymUsersService,
     GymImageKitService,
